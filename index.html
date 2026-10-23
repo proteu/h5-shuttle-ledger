@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>羽毛球群主记账助理 - Demo版</title>
-    <!-- 引入 Tailwind CSS -->
+    <title>羽毛球群主记账助理 (ShuttleLedger)</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- 引入 SheetJS (用于解析 Excel) -->
+    <!-- SheetJS (Excel解析库) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 antialiased">
     <div class="max-w-md mx-auto min-h-screen bg-white shadow-sm flex flex-col">
         <!-- 顶部标题 -->
         <header class="bg-emerald-600 text-white p-4 text-center font-bold text-lg">
-            羽毛球群主记账助理 (Demo)
+            羽毛球群主记账助理
         </header>
 
         <!-- 选项卡导航 -->
@@ -27,13 +27,12 @@
         <main class="flex-1 p-4 pb-20">
             <!-- 1. 会员管理面板 -->
             <section id="panel-members" class="space-y-4">
-                <div class="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
-                    <h3 class="font-bold text-emerald-800 text-sm mb-2">添加新会员</h3>
-                    <div class="space-y-2">
-                        <input type="text" id="new-name" placeholder="球友微信昵称" class="w-full px-3 py-2 border rounded-md text-sm bg-white">
-                        <input type="number" id="new-balance" placeholder="初始余额 (元)" class="w-full px-3 py-2 border rounded-md text-sm bg-white">
-                        <button onclick="addMember()" class="w-full bg-emerald-600 text-white py-2 rounded-md text-sm font-medium hover:bg-emerald-700">添加会员</button>
-                    </div>
+                <div class="bg-emerald-50 p-3 rounded-lg border border-emerald-100 space-y-2">
+                    <h3 class="font-bold text-emerald-800 text-sm">添加新会员（支持别名）</h3>
+                    <input type="text" id="new-name" placeholder="主昵称 (例如: 球友A)" class="w-full px-3 py-2 border rounded-md text-sm bg-white">
+                    <input type="text" id="new-aliases" placeholder="别名/曾用名，用逗号隔开 (例如: A哥, 老A)" class="w-full px-3 py-2 border rounded-md text-sm bg-white">
+                    <input type="number" id="new-balance" placeholder="初始余额 (元)" class="w-full px-3 py-2 border rounded-md text-sm bg-white">
+                    <button onclick="addMember()" class="w-full bg-emerald-600 text-white py-2 rounded-md text-sm font-medium hover:bg-emerald-700">添加会员</button>
                 </div>
 
                 <div>
@@ -48,7 +47,7 @@
             <!-- 2. 活动记账面板 -->
             <section id="panel-activity" class="hidden space-y-4">
                 <div class="space-y-3 bg-gray-50 p-3 rounded-lg border">
-                    <h3 class="font-bold text-gray-700 text-sm">1. 本场基础设置</h3>
+                    <h3 class="font-bold text-gray-700 text-sm">1. 本场活动单价</h3>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="text-xs text-gray-500">会员单价 (元)</label>
@@ -63,7 +62,8 @@
 
                 <div class="space-y-2">
                     <h3 class="font-bold text-gray-700 text-sm">2. 粘贴微信接龙名单</h3>
-                    <textarea id="checkin-text" rows="4" placeholder="请粘贴微信群接龙文本..." class="w-full px-3 py-2 border rounded-md text-sm bg-white[118;1:3u"></textarea>
+                    <p class="text-xs text-gray-400">支持：`甲+2`（单行多人）以及 `球友A` / `球友A挂1` / `球友A挂2`（多行归属统一扣款）</p>
+                    <textarea id="checkin-text" rows="6" placeholder="请粘贴微信群接龙文本..." class="w-full px-3 py-2 border rounded-md text-sm bg-white"></textarea>
                     <button onclick="parseCheckin()" class="w-full bg-blue-600 text-white py-2 rounded-md text-sm font-medium hover:bg-blue-700">解析名单并匹配会员</button>
                 </div>
 
@@ -75,35 +75,31 @@
 
                 <div id="output-box" class="hidden space-y-2">
                     <h3 class="font-bold text-gray-700 text-sm">4. 群公告长文（可直接复制发群）</h3>
-                    <textarea id="group-announcement" rows="5" readonly class="w-full px-3 py-2 border rounded-md text-xs bg-gray-100"></textarea>
+                    <textarea id="group-announcement" rows="6" readonly class="w-full px-3 py-2 border rounded-md text-xs bg-gray-100"></textarea>
                 </div>
             </section>
 
             <!-- 3. 数据备份与 Excel 导入面板 -->
             <section id="panel-backup" class="hidden space-y-4">
-                <!-- Excel 导入卡片 -->
                 <div class="bg-emerald-50 p-4 rounded-lg border border-emerald-100 space-y-3">
                     <h3 class="font-bold text-emerald-800 text-sm">📥 导入群主现有 Excel 表格</h3>
-                    <p class="text-xs text-gray-600">支持上传 `.xlsx` 或 `.xls` 文件。系统会自动尝试识别“姓名”和“余额”列。</p>
                     <input type="file" id="excel-file" accept=".xlsx, .xls, .csv" onchange="previewExcel(event)" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700">
                     
-                    <!-- 预览与列映射区域 -->
                     <div id="excel-preview-box" class="hidden space-y-3 pt-2 border-t border-emerald-200">
                         <div class="grid grid-cols-2 gap-2 text-xs">
                             <div>
-                                <label class="block text-gray-600 mb-1">选择“姓名”所在列：</label>
+                                <label class="block text-gray-600 mb-1">选择“姓名”列：</label>
                                 <select id="col-name" class="w-full p-1.5 border rounded bg-white"></select>
                             </div>
                             <div>
-                                <label class="block text-gray-600 mb-1">选择“余额”所在列：</label>
+                                <label class="block text-gray-600 mb-1">选择“余额”列：</label>
                                 <select id="col-balance" class="w-full p-1.5 border rounded bg-white"></select>
                             </div>
                         </div>
-                        <button onclick="confirmExcelImport()" class="w-full bg-emerald-700 text-white py-2 rounded-md text-xs font-medium hover:bg-emerald-800">确认导入数据到会员库</button>
+                        <button onclick="confirmExcelImport()" class="w-full bg-emerald-700 text-white py-2 rounded-md text-xs font-medium hover:bg-emerald-800">确认导入会员库</button>
                     </div>
                 </div>
 
-                <!-- 备份与恢复卡片 -->
                 <div class="bg-gray-50 p-4 rounded-lg border space-y-3">
                     <h3 class="font-bold text-gray-700 text-sm">💾 本地 JSON 备份与恢复</h3>
                     <button onclick="exportData()" class="w-full bg-gray-800 text-white py-2 rounded-md text-sm font-medium hover:bg-gray-900">导出数据备份 (.json)</button>
@@ -117,31 +113,64 @@
     </div>
 
     <script>
-        // 本地数据模型
+        // 智能加载：依次尝试所有历史存储键名，确保老数据不丢失
+        let rawData = [];
+        const keysToTry = ['badminton_members', 'badminton_members_v5', 'badminton_members_v4', 'badminton_members_v3', 'badm[118;1:3uinton_members_v2'];
+        for (let k of keysToTry) {
+            let val = localStorage.getItem(k);
+            if (val) {
+                try {
+                    let parsed = JSON.parse(val);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        rawData = parsed;
+                        break;
+                    } else if (parsed && Array.isArray(parsed.members) && parsed.members.length > 0) {
+                        rawData = parsed.members;
+                        break;
+                    }
+                } catch (e) {}
+            }
+        }
+
         let db = {
-            members: JSON.parse(localStorage.getItem('badminton_members') || '[]')
+            members: rawData.map(m => ({
+                name: m.name || '',
+                aliases: m.aliases || [],
+                balance: typeof m.balance === 'number' ? m.balance : 0
+            }))
         };
-        let tempExcelRows = []; // 暂存解析后的 Excel 原始数据
+        let tempExcelRows = [];
 
         function saveDB() {
             localStorage.setItem('badminton_members', JSON.stringify(db.members));
             renderMembers();
         }
 
-        // 切换面板
+        // 面板切换（带容错保护）
         function switchTab(tab) {
-            ['members', 'activity', 'backup'].forEach(t => {
-                document.getElementById(`panel-${t}`).classList.add('hidden');
-                document.getElementById(`tab-${t}`).className = "flex-1 py-3 text-center font-medium text-gray-500 bg-gray-100 border-b-0";
-            });
-            document.getElementById(`panel-${tab}`).classList.remove('hidden');
-            document.getElementById(`tab-${tab}`).className = "flex-1 py-3 text-center font-medium text-emerald-600 border-b-2 border-emerald-600 bg-white";
+            try {
+                ['members', 'activity', 'backup'].forEach(t => {
+                    const panel = document.getElementById(`panel-${t}`);
+                    const tabBtn = document.getElementById(`tab-${t}`);
+                    if (panel) panel.classList.add('hidden');
+                    if (tabBtn) tabBtn.className = "flex-1 py-3 text-center font-medium text-gray-500 bg-gray-100 border-b-0";
+                });
+                const activePanel = document.getElementById(`panel-${tab}`);
+                const activeTabBtn = document.getElementById(`tab-${tab}`);
+                if (activePanel) activePanel.classList.remove('hidden');
+                if (activeTabBtn) activeTabBtn.className = "flex-1 py-3 text-center font-medium text-emerald-600 border-b-2 border-emerald-600 bg-white";
+            } catch (err) {
+                console.error("切换选项卡出错：", err);
+            }
         }
 
         // 渲染会员列表
         function renderMembers() {
             const listEl = document.getElementById('member-list');
-            document.getElementById('member-count').innerText = db.members.length;
+            const countEl = document.getElementById('member-count');
+            if (!listEl) return;
+            if (countEl) countEl.innerText = db.members.length;
+
             if (db.members.length === 0) {
                 listEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">暂无会员，请手动添加或去“导入”页面上传 Excel</p>';
                 return;
@@ -150,9 +179,10 @@
                 <div class="flex justify-between items-center p-2.5 bg-gray-50 rounded-md border text-sm">
                     <div>
                         <span class="font-medium">${m.name}</span>
-                        <span class="text-xs text-gray-500 ml-2">余额: ￥${m.balance}</span>
+                        <span class="text-xs text-gray-500 ml-1">(${m.aliases && m.aliases.length ? m.aliases.join(', ') : '无别名'})</span>
+                        <div class="text-xs text-emerald-700 font-semibold mt-0.5">余额: ￥${m.balance}</div>
                     </div>
-                    <div class="space-x-2">
+                    <div class="space-x-1">
                         <button onclick="adjustBalance(${index}, 50)" class="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded">+50充值</button>
                         <button onclick="deleteMember(${index})" class="text-xs text-red-500">删除</button>
                     </div>
@@ -162,10 +192,15 @@
 
         function addMember() {
             const name = document.getElementById('new-name').value.trim();
+            const aliasesRaw = document.getElementById('new-aliases').value.trim();
             const balance = parseFloat(document.getElementById('new-balance').value) || 0;
-            if (!name) return alert('请输入会员昵称');
-            db.members.push({ name, balance });
+            
+            if (!name) return alert('请输入主昵称');
+            const aliases = aliasesRaw ? aliasesRaw.split(/[,，\s]+/).filter(a => a) : [];
+            
+            db.members.push({ name, aliases, balance });
             document.getElementById('new-name').value = '';
+            document.getElementById('new-aliases').value = '';
             document.getElementById('new-balance').value = '';
             saveDB();
         }
@@ -189,120 +224,62 @@
             }
         }
 
-        // --- Excel 解析逻辑 ---
-        function previewExcel(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    
-                    // 转为 JSON 数组对象
-                    const rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-                    if (rows.length === 0) {
-                        alert('Excel 文件内容为空');
-                        return;
-                    }
-
-                    tempExcelRows = rows;
-                    const keys = Object.keys(rows[0]);
-
-                    // 填充下拉选择框
-                    const nameSelect = document.getElementById('col-name');
-                    const balanceSelect = document.getElementById('col-balance');
-                    nameSelect.innerHTML = '';
-                    balanceSelect.innerHTML = '';
-
-                    keys.forEach((key, idx) => {
-                        nameSelect.innerHTML += `<option value="${key}">${key}</option>`;
-                        balanceSelect.innerHTML += `<option value="${key}">${key}</option>`;
-                    });
-
-                    // 智能默认选中包含特定关键字的列
-                    keys.forEach(key => {
-                        const lower = key.toLowerCase();
-                        if (lower.includes('名') || lower.includes('称') || lower.includes('昵')) {
-                            nameSelect.value = key;
-                        }
-                        if (lower.includes('余') || lower.includes('额') || lower.includes('卡') || lower.includes('费')) {
-                            balanceSelect.value = key;
-                        }
-                    });
-
-                    document.getElementById('excel-preview-box').classList.remove('hidden');
-                    alert(`成功读取 Excel，共 ${rows.length} 行数据，请核对下方列名后点击确认导入。`);
-                } catch (err) {
-                    alert('解析 Excel 失败，请确保文件格式正确');
-                    console.error(err);
-                }
-            };
-            reader.readAsArrayBuffer(file);
+        function findMemberByName(keyword) {
+            if (!keyword) return null;
+            keyword = keyword.trim();
+            return db.members.find(m => m.name === keyword || (m.aliases && m.aliases.includes(keyword)));
         }
 
-        function confirmExcelImport() {
-            const nameKey = document.getElementById('col-name').value;
-            const balanceKey = document.getElementById('col-balance').value;
-
-            if (!nameKey || !balanceKey) {
-                alert('请正确选择姓名和余额对应的列');
-                return;
-            }
-
-            let count = 0;
-            tempExcelRows.forEach(row => {
-                const name = String(row[nameKey] || '').trim();
-                const balance = parseFloat(row[balanceKey]) || 0;
-                if (name) {
-                    // 检查是否已存在，存在则累加或更新，不存在则新增
-                    const existing = db.members.find(m => m.name === name);
-                    if (existing) {
-                        existing.balance = balance; // 或选择累加
-                    } else {
-                        db.members.push({ name, balance });
-                    }
-                    count++;
-                }
-            });
-
-            saveDB();
-            document.getElementById('excel-preview-box').classList.add('hidden');
-            document.getElementById('excel-file').value = '';
-            alert(`成功导入 ${count} 位会员数据！`);
-            switchTab('members');
-        }
-
-        // --- 接龙与结算逻辑 ---
         function parseCheckin() {
             const text = document.getElementById('checkin-text').value;
             if (!text.trim()) return alert('请先粘贴接龙文本');
             
             const lines = text.split('\n');
-            let names = [];
+            let parsedItems = [];
+
             lines.forEach(line => {
-                const cleaned = line.replace(/^\d+[\.、\s]*/, '').trim();
-                if (cleaned && cleaned.length < 10 && !cleaned.includes('http')) {
-                    names.push(cleaned);
+                let cleaned = line.replace(/^\d+[\.、\s]*/, '').trim();
+                if (!cleaned || cleaned.length > 20 || cleaned.includes('http')) return;
+
+                let count = 1;
+                let lookupName = cleaned;
+
+                let match = cleaned.match(/^(.+?)\s*\+\s*(\d+)$/);
+                if (match) {
+                    lookupName = match[1].trim();
+                    count = 1 + parseInt(match[2]);
+                } else {
+                    match = cleaned.match(/^(.+?)挂(\d*)\s*$/);
+                    if (match) {
+                        lookupName = match[1].trim();
+                        count = 1;
+                    }
                 }
+
+                const matchedMember = findMemberByName(lookupName);
+                parsedItems.push({
+                    rawText: cleaned,
+                    lookupName: lookupName,
+                    count: count,
+                    isMember: !!matchedMember,
+                    memberName: matchedMember ? matchedMember.name : lookupName
+                });
             });
 
             const container = document.getElementById('participant-list');
-            container.innerHTML = names.map(name => {
-                const isMember = db.members.some(m => m.name === name);
-                return `
-                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded border text-sm participant-row" data-name="${name}">
-                        <span>${name}</span>
-                        <select class="payer-type border rounded p-1 text-xs bg-white">
-                            <option value="member" ${isMember ? 'selected' : ''}>会员扣款</option>
-                            <option value="guest" ${!isMember ? 'selected' : ''}>非会员(现付)</option>
-                        </select>
+            container.innerHTML = parsedItems.map((item) => `
+                <div class="flex justify-between items-center p-2 bg-gray-50 rounded border text-sm participant-row" 
+                     data-rawtext="${item.rawText}" data-lookupname="${item.lookupName}" data-count="${item.count}">
+                    <div>
+                        <span class="font-medium">${item.rawText}</span>
+                        <span class="text-xs text-blue-600 ml-1">(归属扣款: ${item.lookupName})</span>
                     </div>
-                `;
-            }).join('');
+                    <select class="payer-type border rounded p-1 text-xs bg-white">
+                        <option value="member" ${item.isMember ? 'selected' : ''}>会员扣款 (${item.isMember ? item.memberName : '未建档'})</option>
+                        <option value="guest" ${!item.isMember ? 'selected' : ''}>非会员(现金/现付)</option>
+                    </select>
+                </div>
+            `).join('');
             document.getElementById('settlement-result').classList.remove('hidden');
         }
 
@@ -315,20 +292,23 @@
             let deductionLogs = [];
 
             rows.forEach(row => {
-                const name = row.getAttribute('data-name');
+                const rawText = row.getAttribute('data-rawtext');
+                const lookupName = row.getAttribute('data-lookupname');
+                const count = parseInt(row.getAttribute('data-count')) || 1;
                 const type = row.querySelector('.payer-type').value;
-                const price = type === 'member' ? memberPrice : guestPrice;
+                const singlePrice = type === 'member' ? memberPrice : guestPrice;
+                const totalPrice = singlePrice * count;
 
                 if (type === 'member') {
-                    const member = db.members.find(m => m.name === name);
+                    const member = findMemberByName(lookupName);
                     if (member) {
-                        member.balance -= price;
-                        deductionLogs.push(`${name}: 扣费 ￥${price} (剩余余额: ￥${member.balance})`);
+                        member.balance -= totalPrice;
+                        deductionLogs.push(`${rawText} (扣划归主 ${lookupName}, 共${count}人): 扣费 ￥${totalPrice} (余额: ￥${member.balance})`);
                     } else {
-                        deductionLogs.push(`${name}: 选为会员但未在档案中，按现金处理`);
+                        deductionLogs.push(`${rawText} (主名 ${lookupName} 未建档): 按现金/现付 ￥${totalPrice}`);
                     }
                 } else {
-                    deductionLogs.push(`${name}: 现金/转账 ￥${price}`);
+                    deductionLogs.push(`${rawText} (归属 ${lookupName}, 共${count}人): 现金/转账 ￥${totalPrice}`);
                 }
             });
 
@@ -337,18 +317,77 @@
             report += deductionLogs.join('\n');
             document.getElementById('group-announcement').value = report;
             document.getElementById('output-box').classList.remove('hidden');
-            alert('划扣完成，会员余额已自动更新！');
+            alert('划扣完成！所有数据已更新并生成群公告。');
         }
 
-        // --- JSON 备份与恢复 ---
+        function previewExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
+                    if (rows.length === 0) return alert('Excel 内容为空');
+
+                    tempExcelRows = rows;
+                    const keys = Object.keys(rows[0]);
+
+                    const nameSelect = document.getElementById('col-name');
+                    const balanceSelect = document.getElementById('col-balance');
+                    nameSelect.innerHTML = keys.map(k => `<option value="${k}">${k}</option>`).join('');
+                    balanceSelect.innerHTML = keys.map(k => `<option value="${k}">${k}</option>`).join('');
+
+                    keys.forEach(k => {
+                        const l = k.toLowerCase();
+                        if (l.includes('名') || l.includes('称') || l.includes('昵')) nameSelect.value = k;
+                        if (l.includes('余') || l.includes('额') || l.includes('卡') || l.includes('费')) balanceSelect.value = k;
+                    });
+
+                    document.getElementById('excel-preview-box').classList.remove('hidden');
+                    alert(`成功读取 Excel，共 ${rows.length} 行。`);
+                } catch (err) {
+                    alert('解析 Excel 失败');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function confirmExcelImport() {
+            const nameKey = document.getElementById('col-name').value;
+            const balanceKey = document.getElementById('col-balance').value;
+
+            let count = 0;
+            tempExcelRows.forEach(row => {
+                const name = String(row[nameKey] || '').trim();
+                const balance = parseFloat(row[balanceKey]) || 0;
+                if (name) {
+                    const existing = db.members.find(m => m.name === name);
+                    if (existing) {
+                        existing.balance = balance;
+                    } else {
+                        db.members.push({ name, aliases: [], balance });
+                    }
+                    count++;
+                }
+            });
+
+            saveDB();
+            document.getElementById('excel-preview-box').classList.add('hidden');
+            alert(`成功导入 ${count} 位会员！`);
+            switchTab('members');
+        }
+
         function exportData() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `badminton_backup_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
+            const a = document.createElement('a');
+            a.href = dataStr;
+            a.download = `badminton_backup_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
         }
 
         function importJSONData(event) {
@@ -357,23 +396,29 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const imported = JSON.parse(e.target.result);
+                    let imported = JSON.parse(e.target.result);
                     if (imported && imported.members) {
-                        db = imported;
+                        db = {
+                            members: imported.members.map(m => ({
+                                name: m.name || '',
+                                aliases: m.aliases || [],
+                                balance: typeof m.balance === 'number' ? m.balance : 0
+                            }))
+                        };
                         saveDB();
-                        alert('JSON 备份恢复成功！');
+                        alert('备份数据恢复成功！');
                         switchTab('members');
                     } else {
                         alert('文件格式错误');
                     }
                 } catch(err) {
-                    alert('解析 JSON 失败');
+                    alert('JSON 解析失败');
                 }
             };
             reader.readAsText(file);
         }
 
-        // 初始化
+        // 页面初始化执行
         renderMembers();
     </script>
 </body>
