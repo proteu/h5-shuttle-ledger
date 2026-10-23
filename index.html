@@ -15,7 +15,7 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800 antialiased [118;1:3umin-h-screen">
+<body class="bg-gray-100 text-gray-800 antialiased min-h-screen">
     <div class="max-w-md mx-auto min-h-screen bg-white shadow-lg flex flex-col justify-between">
         <!-- 头部标题区 -->
         <header class="bg-emerald-600 text-white p-4 shadow-sm text-center">
@@ -39,7 +39,7 @@
         <!-- 主内容区域 -->
         <main class="flex-1 p-4 space-y-4">
             
-            <!-- 提示信息弹窗 (取代危险的 alert) -->
+            <!-- 提示信息弹窗 -->
             <div id="toast" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-gray-900 text-white text-xs px-4 py-2 rounded-full shadow-lg transition-opacity duration-300">
                 <span id="toast-msg">消息提示</span>
             </div>
@@ -106,7 +106,7 @@
                     <h3 class="font-bold text-gray-700 text-sm">2. 粘贴微信接龙名单</h3>
                     <p class="text-xs text-gray-400">自动识别格式: `张三` | `李四+2` | `王五挂1` | `赵六 挂`</p>
                     <textarea id="checkin-text" rows="5" placeholder="1. 张三&#10;2. 李四+2&#10;3. 海涛挂1&#10;4. 新球友" class="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"></textarea>
-                    <button onclick="parseCheckinText()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm shadow-sm transition-all">
+                    <button id="btn-parse-checkin" onclick="parseCheckinText()" class="w-full bg-blue-600 hover:bg-blue-7[118;1:3u00 text-white font-medium py-2 rounded-lg text-sm shadow-sm transition-all">
                         解析报名名单
                     </button>
                 </div>
@@ -122,16 +122,19 @@
                         <!-- 动态列表 -->
                     </div>
 
-                    <button onclick="executeSettlement()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 rounded-lg text-sm shadow transition-all">
+                    <button id="btn-execute-settlement" onclick="executeSettlement()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 rounded-lg text-sm shadow transition-all">
                         确认批量划扣并生成公告
                     </button>
                 </div>
 
                 <!-- 群公告输出区 -->
-                <div id="announcement-section" class="hidden space-y-2 border-t border-gray-200 pt-3">
+                <div id="announcement-section" class="hidden space-y-3 border-t border-gray-200 pt-3">
                     <div class="flex justify-between items-center">
                         <h3 class="font-bold text-gray-700 text-sm">4. 活动划扣公告</h3>
-                        <button onclick="copyAnnouncement()" class="text-xs text-emerald-600 font-semibold hover:underline">一键复制公告</button>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="copyAnnouncement()" class="text-xs text-emerald-600 font-semibold hover:underline">一键复制公告</button>
+                            <button onclick="startNewSettlement()" class="text-xs text-gray-500 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-all">发起新接龙结算</button>
+                        </div>
                     </div>
                     <textarea id="group-announcement" rows="6" readonly class="w-full px-3 py-2 border rounded-lg text-xs bg-gray-50 text-gray-700 font-mono focus:outline-none"></textarea>
                 </div>
@@ -181,12 +184,17 @@
 
         <!-- 底部版权 -->
         <footer class="p-3 text-center text-[10px] text-gray-400 border-t border-gray-100">
-            ShuttleLedger v6.0 · 本地安全存储 · 离线可用
+            ShuttleLedger v6.1 · 本地安全存储 · 离线可用
         </footer>
     </div>
 
     <!-- 应用程序核心逻辑 -->
     <script>
+        // 全局错误捕获
+        window.onerror = function(msg, url, line) {
+            console.error("全局异常:", msg, "行:", line);
+        };
+
         // ================= 全局状态与数据安全加载 =================
         const CURRENT_KEY = 'badminton_members';
         const HISTORICAL_KEYS = [
@@ -197,7 +205,6 @@
             'badminton_members_v2'
         ];
 
-        // 默认备用测试数据 (确保初次打开或清空后绝不报错白屏)
         const DEFAULT_MEMBERS = [
             { name: "张三", aliases: ["老张", "张哥"], balance: 100 },
             { name: "李四", aliases: ["四哥"], balance: 70 },
@@ -206,6 +213,7 @@
 
         let members = [];
         let tempExcelRows = [];
+        let isSettled = false; // 防重复提交标志
 
         // 初始化加载数据
         function initData() {
@@ -231,14 +239,13 @@
                 }
             }
 
-            // 如果任何历史 Key 都没读到数据，则初始化为默认数据
             if (!loaded || members.length === 0) {
                 members = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
             }
             saveData();
         }
 
-        // 保存数据至 localStorage
+        // 保存数据至 localStorage 并同步更新会员界面
         function saveData() {
             try {
                 localStorage.setItem(CURRENT_KEY, JSON.stringify(members));
@@ -248,7 +255,6 @@
             renderMemberList();
         }
 
-        // 统一消息提示
         function showToast(msg) {
             const toast = document.getElementById('toast');
             const toastMsg = document.getElementById('toast-msg');
@@ -331,11 +337,9 @@
             const balance = parseFloat(balanceInput.value) || 0;
 
             if (editIndex >= 0 && editIndex < members.length) {
-                // 编辑已存在会员
                 members[editIndex] = { name, aliases, balance };
                 showToast("会员已更新");
             } else {
-                // 检查名称重复
                 if (members.some(m => m.name === name)) {
                     showToast("已有同名主昵称会员");
                     return;
@@ -396,7 +400,6 @@
             }
         }
 
-        // 匹配主昵称或别名
         function findMemberByName(keyword) {
             if (!keyword) return null;
             const kw = keyword.trim().toLowerCase();
@@ -414,20 +417,23 @@
                 return;
             }
 
+            // 重置划扣状态
+            isSettled = false;
+            document.getElementById('btn-execute-settlement').disabled = false;
+            document.getElementById('btn-execute-settlement').innerText = "确认批量划扣并生成公告";
+            document.getElementById('btn-execute-settlement').classList.remove('opacity-50', 'cursor-not-allowed');
+
             const lines = text.split('\n');
             let parsedList = [];
 
             lines.forEach(line => {
-                // 过滤前面的序号如 "1. ", "2、", "3 "
                 let cleaned = line.replace(/^\d+[\.、\s]*/, '').trim();
                 if (!cleaned || cleaned.length > 25 || cleaned.includes('http')) return;
 
                 let count = 1;
                 let lookupName = cleaned;
 
-                // 规则 1: 格式如 "乙+2" -> 代表乙加上2个朋友，共3人
                 let matchPlus = cleaned.match(/^(.+?)\s*\+\s*(\d+)$/);
-                // 规则 2: 格式如 "球友A挂1", "球友A挂2", "球友A 挂" -> 代表1人，归属于主名
                 let matchGua = cleaned.match(/^(.+?)\s*挂\s*(\d*)$/);
 
                 if (matchPlus) {
@@ -492,9 +498,7 @@
                             </select>
                         </div>
                         
-                        <!-- 动态扩展区：新建会员充值框 / 归为别名下拉框 -->
                         <div class="sub-action-box hidden bg-white p-2 rounded border border-emerald-200 space-y-1.5">
-                            <!-- 动态注入 -->
                         </div>
                     </div>
                 `;
@@ -504,7 +508,6 @@
             document.getElementById('announcement-section').classList.add('hidden');
         }
 
-        // 下拉选择类型改变事件
         function handleActionTypeChange(selectEl) {
             const val = selectEl.value;
             const itemBox = selectEl.closest('.participant-item');
@@ -526,7 +529,7 @@
                 subBox.classList.remove('hidden');
             } else if (val === 'link') {
                 let optionsHtml = members.map(m => `<option value="${escapeHtml(m.name)}">${escapeHtml(m.name)} (余额:￥${m.balance})</option>`).join('');
-                subActionHtml = `
+                subBox.innerHTML = `
                     <div class="flex items-center justify-between text-blue-800">
                         <span>关联到已有会员：</span>
                         <select class="link-target-member border rounded px-1.5 py-0.5 text-xs bg-blue-50/50 font-semibold">
@@ -534,13 +537,17 @@
                         </select>
                     </div>
                 `;
-                subBox.innerHTML = subActionHtml;
                 subBox.classList.remove('hidden');
             }
         }
 
-        // 执行最终划扣
+        // 执行划扣 - 包含防重复和状态清理机制
         function executeSettlement() {
+            if (isSettled) {
+                showToast("本次接龙已划扣过！如需重新结算，请先“发起新接龙结算”");
+                return;
+            }
+
             const items = document.querySelectorAll('.participant-item');
             if (items.length === 0) return;
 
@@ -548,7 +555,6 @@
             const guestPrice = parseFloat(document.getElementById('price-guest').value) || 45;
 
             let logLines = [];
-            let updatedCount = 0;
 
             items.forEach(item => {
                 const rawText = item.getAttribute('data-rawtext');
@@ -558,16 +564,13 @@
                 const subBox = item.querySelector('.sub-action-box');
 
                 if (actionType === 'member') {
-                    // 已匹配会员直接扣款
                     const member = findMemberByName(lookupName);
                     if (member) {
                         const totalCost = memberPrice * count;
                         member.balance -= totalCost;
                         logLines.push(`• ${rawText}: 划扣 ￥${totalCost} [归属:${member.name}, 余:￥${member.balance}]`);
-                        updatedCount++;
                     }
                 } else if (actionType === 'create') {
-                    // 现场新建会员并扣款
                     const initBalInput = subBox.querySelector('.new-member-init-bal');
                     const initBal = initBalInput ? parseFloat(initBalInput.value) || 0 : 0;
                     const totalCost = memberPrice * count;
@@ -580,9 +583,7 @@
                     });
 
                     logLines.push(`• ${rawText}: 新建会员 [充费:￥${initBal}, 本次扣:￥${totalCost}, 余:￥${finalBal}]`);
-                    updatedCount++;
                 } else if (actionType === 'link') {
-                    // 归为已有会员别名并扣款
                     const targetSelect = subBox.querySelector('.link-target-member');
                     const targetName = targetSelect ? targetSelect.value : '';
                     const targetMember = findMemberByName(targetName);
@@ -591,20 +592,24 @@
                         const totalCost = memberPrice * count;
                         targetMember.balance -= totalCost;
 
-                        // 自动添加为别名
                         if (!targetMember.aliases.includes(lookupName) && targetMember.name !== lookupName) {
                             targetMember.aliases.push(lookupName);
                         }
 
                         logLines.push(`• ${rawText}: 挂靠划扣 ￥${totalCost} [归属:${targetMember.name}, 余:￥${targetMember.balance}] (已补入别名)`);
-                        updatedCount++;
                     }
                 } else {
-                    // 非会员现金结算
                     const totalCost = guestPrice * count;
                     logLines.push(`• ${rawText}: 现金/转账 ￥${totalCost} (${count}人)`);
                 }
             });
+
+            // 标记已划扣，禁用重复点击
+            isSettled = true;
+            const btnExec = document.getElementById('btn-execute-settlement');
+            btnExec.disabled = true;
+            btnExec.innerText = "已划扣完成";
+            btnExec.classList.add('opacity-50', 'cursor-not-allowed');
 
             saveData();
 
@@ -619,7 +624,27 @@
             document.getElementById('group-announcement').value = announcement;
             document.getElementById('announcement-section').classList.remove('hidden');
 
-            showToast("结算划扣成功，已生成公告！");
+            // 划扣成功后隐藏划扣确认区，防止重复扣款
+            document.getElementById('settlement-section').classList.add('hidden');
+
+            showToast("结算划扣成功，已更新余额并生成公告！");
+        }
+
+        // 重置/发起新接龙结算
+        function startNewSettlement() {
+            document.getElementById('checkin-text').value = '';
+            document.getElementById('participant-list').innerHTML = '';
+            document.getElementById('settlement-section').classList.add('hidden');
+            document.getElementById('announcement-section').classList.add('hidden');
+            document.getElementById('group-announcement').value = '';
+
+            isSettled = false;
+            const btnExec = document.getElementById('btn-execute-settlement');
+            btnExec.disabled = false;
+            btnExec.innerText = "确认批量划扣并生成公告";
+            btnExec.classList.remove('opacity-50', 'cursor-not-allowed');
+
+            showToast("状态已重置，可以输入新接龙了");
         }
 
         function copyAnnouncement() {
@@ -657,7 +682,6 @@
                     nameSelect.innerHTML = keys.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
                     balanceSelect.innerHTML = keys.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
 
-                    // 智能默认选中推断
                     keys.forEach(k => {
                         const l = k.toLowerCase();
                         if (l.includes('名') || l.includes('称') || l.includes('昵') || l.includes('会员')) nameSelect.value = k;
@@ -704,7 +728,7 @@
 
         function exportJSONBackup() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
-                version: "6.0",
+                version: "6.1",
                 exportTime: new Date().toISOString(),
                 members: members
             }));
@@ -746,7 +770,6 @@
             reader.readAsText(file);
         }
 
-        // HTML 转义防注入助手
         function escapeHtml(str) {
             if (!str) return '';
             return String(str)
@@ -757,7 +780,6 @@
                 .replace(/'/g, "&#039;");
         }
 
-        // 全局运行启动
         window.onload = function() {
             initData();
         };
