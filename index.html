@@ -39,7 +39,10 @@
                 <div>
                     <div class="flex justify-between items-center mb-2">
                         <h3 class="font-bold text-gray-700 text-sm">会员列表 (<span id="member-count">0</span>)</h3>
-                        <button onclick="clearAllMembers()" class="text-xs text-red-500 hover:underline">清空全部</button>
+                        <div class="space-x-2">
+                            <button onclick="exportMembersExcel()" class="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded hover:bg-emerald-200 font-medium">导出Excel</button>
+                            <button onclick="clearAllMembers()" class="text-xs text-red-500 hover:underline">清空全部</button>
+                        </div>
                     </div>
                     <div id="member-list" class="space-y-2 max-h-96 overflow-y-auto"></div>
                 </div>
@@ -64,8 +67,8 @@
                 <div class="space-y-2">
                     <h3 class="font-bold text-gray-700 text-sm">2. 粘贴微信完整接龙内容</h3>
                     <p class="text-xs text-gray-400">可包含活动日期、球馆地点、时间及名单，系统会自动识别并提取。</p>
-                    <textarea id="checkin-text" rows="8" placeholder="例如：&#10;2026年10月17日&#10;卢沟飞羽羽毛球馆5号场地&#10;时间:周六上午09:00－11:00&#10;&#10;1. 林海涛+1&#10;2. 酒缸&#10;3. 邢树军&#10;4. 阿毛挂1" class="w-full px-3 py-2 border rounded-md text-sm bg-white font-mono"></textarea>
-                    <button id="btn-parse" onclick="parseCheckin()" class="w-full bg-blue-600 text-white py-2 rounded-md text-sm font-medium hover:bg-blue-700">解析活动与名单</button>
+                    <textarea id="checkin-text" rows="8" placeholder="例如：&#10;2026年10月25日(星期日）时间：19:00--21:00&#10;地点：一六八羽毛球馆&#10;&#10;1东东&#10;2竹子&#10;4老刘&#10;5阿毛挂1" class="w-full px-3 py-2 border rounded-md text-sm bg-white font-mono"></textarea>
+                    <button onclick="parseCheckin()" class="w-full bg-blue-600 text-white py-2 rounded-md text-sm font-medium hover:bg-blue-700">解析活动与名单</button>
                 </div>
 
                 <!-- 识别到的活动头信息提示 -->
@@ -73,14 +76,14 @@
                     <div class="font-bold text-blue-800">📌 识别到活动信息：</div>
                     <div><span class="text-gray-500">日期：</span><span id="parsed-date" class="font-medium text-gray-800"></span></div>
                     <div><span class="text-gray-500">地点：</span><span id="parsed-location" class="font-medium text-gray-800"></span></div>
-                    <div><span class="text-gray-500">时间/安排：</span><span id="parsed-time" class="font-medium text-gray-800"></span></div>
+                    <div><span class="text-gray-500">时间：</span><span id="parsed-time" class="font-medium text-gray-800"></span></div>
                 </div>
 
                 <!-- 结算列表 -->
                 <div id="settlement-result" class="hidden space-y-3 border-t pt-3">
                     <h3 class="font-bold text-gray-700 text-sm">3. 结算与划扣确认</h3>
                     <div id="participant-list" class="space-y-2 max-h-60 overflow-y-auto"></div>
-                    <button id="btn-execute" onclick="executeDeduction()" class="w-full bg-emerald-600 text-white py-2 rounded-md text-sm font-medium hover:bg-emerald-700">确认批量划扣并归档历史</button>
+                    <button onclick="executeDeduction()" class="w-full bg-emerald-600 text-white py-2 rounded-md text-sm font-medium hover:bg-emerald-700">确认批量划扣并归档历史</button>
                 </div>
 
                 <!-- 群公告输出与重置 -->
@@ -89,7 +92,7 @@
                         <h3 class="font-bold text-gray-700 text-sm">4. 活动结算公告</h3>
                         <button onclick="copyAnnouncement()" class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">一键复制公告</button>
                     </div>
-           [118;1:3u         <textarea id="group-announcement" rows="7" readonly class="w-full px-3 py-2 border rounded-md text-xs bg-gray-100 font-mono"></textarea>
+                    <textarea id="group-announcement" rows="7" readonly class="w-full px-3 py-2 border rounded-md text-xs bg-gray-100 font-mono"></textarea>
                     
                     <button onclick="resetActivityForm()" class="w-full bg-gray-100 text-gray-700 border py-2 rounded-md text-xs font-medium hover:bg-gray-200">
                         🔄 发起新接龙结算 (清空当前)
@@ -112,7 +115,7 @@
 
             <!-- 4. 数据备份与 Excel 导入面板 -->
             <section id="panel-backup" class="hidden space-y-4">
-                <div class="bg-emerald-50 p-4 rounded-lg border border-emerald-100 space-y-3">
+              [118;1:3u  <div class="bg-emerald-50 p-4 rounded-lg border border-emerald-100 space-y-3">
                     <h3 class="font-bold text-emerald-800 text-sm">📥 导入群主现有 Excel 表格</h3>
                     <input type="file" id="excel-file" accept=".xlsx, .xls, .csv" onchange="previewExcel(event)" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700">
                     
@@ -145,7 +148,7 @@
     </div>
 
     <script>
-        // 1. 初始化数据库结构（包含会员和活动历史记录）
+        // 初始化数据库结构
         let rawMembers = [];
         const keysToTry = ['badminton_members', 'badminton_members_v5', 'badminton_members_v4'];
         for (let k of keysToTry) {
@@ -180,7 +183,7 @@
 
         let tempExcelRows = [];
         let currentParsedHeader = { date: '', location: '', time: '' };
-        let isSettledCurrentSession = false; // 结算防重标识
+        let isSettledCurrentSession = false;
 
         function saveDB() {
             localStorage.setItem('badminton_members', JSON.stringify(db.members));
@@ -229,6 +232,24 @@
             `).join('');
         }
 
+        // 导出会员列表为 Excel
+        function exportMembersExcel() {
+            if (!db.members || db.members.length === 0) {
+                return alert('当前没有会员数据可导出');
+            }
+            const excelData = db.members.map((m, index) => ({
+                "序号": index + 1,
+                "姓名/主昵称": m.name,
+                "别名/曾用名": m.aliases ? m.aliases.join(', ') : '',
+                "当前余额(元)": m.balance
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "会员档案");
+            XLSX.writeFile(workbook, `羽毛球会员档案_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
         function addMember() {
             const name = document.getElementById('new-name').value.trim();
             const aliasesRaw = document.getElementById('new-aliases').value.trim();
@@ -269,8 +290,8 @@
             return db.members.find(m => m.name === keyword || (m.aliases && m.aliases.includes(keyword)));
         }
 
-        // 2. 接龙解析逻辑（抽取活动信息与人员）
-        // 升级版接龙解析逻辑（精准拆分同行的日期与时间，兼容多种冒号前缀）
+        // 接龙解析逻辑（精准拆分同行的日期与时间）
+        // 升级版接龙解析逻辑（修复地点行被误判为报名人的Bug）
         function parseCheckin() {
             const text = document.getElementById('checkin-text').value;
             if (!text.trim()) return alert('请先粘贴接龙文本');
@@ -284,36 +305,39 @@
             let participantLines = [];
 
             lines.forEach(line => {
-                // 过滤常见的尾部福利/提示信息
-                if (line.includes('温馨提示') || line.includes('免责声明') || line.includes('AA制') || line.includes('福利') || line.includes('拉线') || line.includes('眼镜')) {
+                // 过滤常见的尾部福利/提示信息、表头说明
+                if (line.includes('温馨提示') || line.includes('免责声明') || line.includes('AA制') || line.includes('福利') || line.includes('拉线') || line.includes('眼镜') || line.includes('报名跟帖') || line.includes('报名结束') || line.includes('打球报名')) {
                     return;
                 }
 
-                // 1. 尝试匹配日期（如：2026年10月25日(星期日）或 10月25日）
+                // 1. 匹配日期
                 const dateMatch = line.match(/(\d{4}年\d{1,2}月\d{1,2}日(?:\([\s\S]*?\)|（[\s\S]*?）)?|\d{1,2}月\d{1,2}日(?:\([\s\S]*?\)|（[\s\S]*?）)?)/);
                 if (dateMatch && !dateStr) {
-                    dateStr = dateMatch[1]; // 只提取日期和星期部分，不把后面同行的时间抓进来
+                    dateStr = dateMatch[1];
+                    return; // 匹配成功直接跳过
                 }
 
-                // 2. 尝试匹配时间（如：19:00--21:00 或 时间:周六上午09:00－11:00）
+                // 2. 匹配时间
                 const timeMatch = line.match(/(?:时间[:：]?)?\s*(\d{1,2}[:：]\d{2}\s*[-－—~〜]+\s*\d{1,2}[:：]\d{2}|周[一二三四五六日天][\s\S]*?\d{1,2}[:：]\d{2}[\s\S]*)/);
                 if (timeMatch && !timeStr) {
                     timeStr = timeMatch[1] || timeMatch[0];
-                    timeStr = timeStr.replace(/^时间[:：]?\s*/, ''); // 清理开头的“时间:”
+                    timeStr = timeStr.replace(/^时间[:：]?\s*/, '');
+                    return; // 匹配成功直接跳过
                 }
 
-                // 3. 尝试匹配地点（如：地点：一六八羽毛球馆 或 卢沟飞羽羽毛球馆5号场地）
+                // 3. 匹配地点（包含馆、场地、地点等特征）
                 if (!locationStr && (line.includes('球馆') || line.includes('场地') || line.includes('地点') || line.includes('馆'))) {
-                    locationStr = line.replace(/^地点[:：]?\s*/, ''); // 清理开头的“地点:”
+                    locationStr = line.replace(/^地点[:：]?\s*/, '');
+                    return; // 【关键修复】匹配到地点后必须直接 return，绝不能让它流转到下方的报名人解析中！
                 }
 
-                // 4. 识别有效报名人员行（带数字序号的行，且不能是日期行/通知行）
-                if (line.match(/^\d+[\.、\s]*/) && !line.match(/\d{4}年/) && !line.includes('会员') && !line.includes('福利')) {
+                // 4. 识别有效报名人员行（带数字序号，且严格排除包含场馆/通知等关键词的行）
+                const hasLocationKeyword = line.includes('球馆') || line.includes('场地') || line.includes('馆');
+                if (line.match(/^\d+[\.、\s]*/) && !hasLocationKeyword && !line.includes('年') && !line.includes('月')) {
                     participantLines.push(line);
                 }
             });
 
-            // 补全默认日期
             if (!dateStr) {
                 const today = new Date();
                 dateStr = `${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日`;
@@ -431,7 +455,7 @@
             }
         }
 
-        // 3. 执行批量划扣与保存历史记录
+        // 执行批量划扣
         function executeDeduction() {
             if (isSettledCurrentSession) {
                 return alert('本次活动结算已经完成，请勿重复操作！如需记新账请点击“发起新接龙结算”。');
@@ -523,7 +547,6 @@
             const announcementFullText = announcementLines.join('\n');
             document.getElementById('group-announcement').value = announcementFullText;
 
-            // 存入历史数据库
             const historyItem = {
                 id: 'act_' + Date.now(),
                 createdAt: new Date().toLocaleString(),
@@ -535,11 +558,11 @@
                 announcementText: announcementFullText,
                 details: activityDetails
             };
-            db.history.unshift(historyItem); // 最新放在最上面
+            db.history.unshift(historyItem);
 
             saveDB();
 
-            isSettledCurrentSession = true; // 锁定防止二次扣款
+            isSettledCurrentSession = true;
             document.getElementById('settlement-result').classList.add('hidden');
             document.getElementById('output-box').classList.remove('hidden');
             alert('划扣成功！活动记录已自动归档至“历史活动”中。');
@@ -560,7 +583,7 @@
             isSettledCurrentSession = false;
         }
 
-        // 4. 渲染历史活动列表
+        // 渲染历史活动列表
         function renderHistory() {
             const listEl = document.getElementById('history-list');
             const countEl = document.getElementById('history-count');
@@ -608,7 +631,6 @@
             }
         }
 
-        // 导出单场活动为 Excel
         function exportSingleHistoryExcel(index) {
             const item = db.history[index];
             if (!item) return;
@@ -630,7 +652,6 @@
             XLSX.writeFile(workbook, `羽毛球账单_${item.date}.xlsx`);
         }
 
-        // 导出所有历史打球记录为 Excel
         function exportAllHistoryExcel() {
             if (db.history.length === 0) return alert('暂无历史记录可导出');
 
@@ -656,7 +677,7 @@
             XLSX.writeFile(workbook, `羽毛球全部历史活动汇总_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
-        // 5. Excel 导入与 JSON 恢复
+        // Excel 导入与 JSON 恢复
         function previewExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
