@@ -738,6 +738,7 @@
             switchTab('members');
         }
 
+/**
         function exportData() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
             const a = document.createElement('a');
@@ -746,6 +747,28 @@
             document.body.appendChild(a);
             a.click();
             a.remove();
+        }
+*/
+        function exportData() {
+            const jsonStr = JSON.stringify(db, null, 2);
+            
+            // 1. 创建 Blob 对象，使用通用二进制流类型强制移动端触发下载
+            const blob = new Blob([jsonStr], { type: 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            
+            // 2. 动态创建 a 标签并触发下载
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `badminton_full_backup_${new Date().toISOString().slice(0,10)}.json`;
+            
+            document.body.appendChild(a);
+            a.click();
+            
+            // 3. 延时清理 DOM 和释放内存
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 1000);
         }
 
         function importJSONData(event) {
